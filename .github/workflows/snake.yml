@@ -39,8 +39,13 @@ jobs:
       - name: Publish to the output branch
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # snk runs as a container action, so dist/ is owned by root and the runner
+        # user cannot create .git inside it. Publish from a copy the runner owns.
         run: |
-          cd dist
+          out="$RUNNER_TEMP/snake"
+          mkdir -p "$out"
+          cp dist/*.svg "$out/"
+          cd "$out"
           git init -q -b output
           git add .
           git -c user.name="github-actions[bot]" \
