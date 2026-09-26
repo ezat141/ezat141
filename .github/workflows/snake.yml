@@ -1,0 +1,49 @@
+name: Contribution snake
+
+# Regenerates the animated contribution graph in the README's Activity section.
+# It reads only the public contribution calendar, using the repository's own
+# GITHUB_TOKEN — no personal token or third-party API key.
+#
+# Output is force-pushed to an orphan `output` branch, so the generated SVGs never
+# clutter master and the branch never accumulates history.
+
+on:
+  schedule:
+    - cron: "17 3 * * *"   # daily; off the hour to avoid the top-of-hour Actions queue
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths: [".github/workflows/snake.yml"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: snake
+  cancel-in-progress: true
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Generate
+        uses: Platane/snk@v3
+        with:
+          github_user_name: ${{ github.repository_owner }}
+          # five dot colours: empty cell, then four activity levels
+          outputs: |
+            dist/github-snake.svg?palette=github-light&color_snake=#0891b2&color_dots=#ebedf0,#ddd6fe,#c4b5fd,#a78bfa,#7c3aed
+            dist/github-snake-dark.svg?palette=github-dark&color_snake=#a78bfa&color_dots=#161b22,#0e3a47,#0e6377,#138aa3,#22d3ee
+
+      - name: Publish to the output branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd dist
+          git init -q -b output
+          git add .
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -q -m "Update contribution snake"
+          git push -q -f "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" output
